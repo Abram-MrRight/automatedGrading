@@ -1,25 +1,24 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import Axios from "../utils/Axios";
 
 const Review = () => {
-  const [submissions, setSubmissions] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [updatingGrade, setUpdatingGrade] = useState(false);
+  const [updatingGradeId, setUpdatingGradeId] = useState(null);
   const [notification, setNotification] = useState({ message: "", type: "" });
+  const [plagiarismReports, setPlagiarismReports] = useState([]);
+
 
   useEffect(() => {
-    fetchSubmissions();
+    fetchGrades();
+    fetchPlagiarismReports();
   }, []);
 
-  const fetchSubmissions = async () => {
+  const fetchGrades = async () => {
     try {
-      // const response = await axios.get("http://localhost:8000/review-submissions");
-      // setSubmissions(response.data);
-      setSubmissions([
-        { id: 1, student: "John Doe", title: "Essay on AI", status: "Pending", grade: "85%" },
-        { id: 2, student: "Jane Smith", title: "Cybersecurity Report", status: "Pending", grade: "90%" },
-      ])
+      const response = await Axios.get("grading-review-requests/");
+      setReviews(response.data);
     } catch (err) {
       setError("Failed to fetch submissions.");
       console.error(err);
@@ -28,32 +27,47 @@ const Review = () => {
     }
   };
 
-  const handleView = (id) => {
-    alert(`Viewing submission ID: ${id}`);
-    // Replace this with navigation to a detailed review page
+  const fetchPlagiarismReports = async () => {
+    try {
+      const response = await Axios.get("plagiarism-reports/");
+      setPlagiarismReports(response.data);
+    } catch (err) {
+      console.error("Failed to fetch plagiarism reports:", err);
+    }
   };
 
+  const handleView = (grade) => {
+    const fileUrl = grade.submission_file_url;
+    if (fileUrl) {
+      window.open(`http://localhost:8000${fileUrl}`, "_blank");
+    } else {
+      alert("No submission file available.");
+    }
+  };  
+
   const handleAdjustGrade = async (id) => {
+    console.log(reviews);
     const newGrade = prompt("Enter new grade for this submission:");
     if (!newGrade) return;
 
-    setUpdatingGrade(true);
+    setUpdatingGradeId(id);
     setNotification({ message: "", type: "" });
 
     try {
-      await axios.put(`http://localhost:8000/review-submissions/${id}`, { grade: newGrade });
-      setSubmissions((prev) =>
-        prev.map((submission) =>
-          submission.id === id ? { ...submission, grade: newGrade } : submission
+      await Axios.put(`gradings/${id}/update-grade/`, { grade: newGrade });
+
+      setReviews((prev) =>
+        prev.map((grade) =>
+          grade.id === id ? { ...grade, grade: newGrade } : grade
         )
       );
       setNotification({ message: "Grade updated successfully!", type: "success" });
     } catch (err) {
-      setNotification({ message: "Failed to update grade. Please try again.", type: "error" });
+      setNotification({ message: "Failed to update grade.", type: "error" });
       console.error(err);
     } finally {
-      setUpdatingGrade(false);
-      setTimeout(() => setNotification({ message: "", type: "" }), 3000); 
+      setUpdatingGradeId(null);
+      setTimeout(() => setNotification({ message: "", type: "" }), 3000);
     }
   };
 
@@ -64,14 +78,18 @@ const Review = () => {
       {loading && <p>Loading...</p>}
       {error && <p style={styles.error}>{error}</p>}
 
-      {/* Display Success/Error Notification */}
       {notification.message && (
-        <div style={{ ...styles.notification, backgroundColor: notification.type === "success" ? "#2ecc71" : "#e74c3c" }}>
+        <div
+          style={{
+            ...styles.notification,
+            backgroundColor: notification.type === "success" ? "#2ecc71" : "#e74c3c",
+          }}
+        >
           {notification.message}
         </div>
       )}
 
-      {!loading && submissions.length > 0 ? (
+      {!loading && reviews.length > 0 ? (
         <table style={styles.table}>
           <thead>
             <tr>
@@ -82,17 +100,24 @@ const Review = () => {
             </tr>
           </thead>
           <tbody>
-            {submissions.map((submission) => (
-              <tr key={submission.id}>
-                <td>{submission.student}</td>
-                <td>{submission.title}</td>
-                <td>{submission.grade}</td>
+            {reviews.map((grade) => (
+              <tr key={grade.id}>
+                <td>{grade.student_name || "N/A"}</td>
+                <td>{grade.exam_name || "Untitled Exam"}</td>
+                <td>{grade.grade || "Pending"}</td>
                 <td>
-                  <button style={styles.viewButton} onClick={() => handleView(submission.id)}>
+                  <button
+                    style={styles.viewButton}
+                    onClick={() => handleView(grade)}
+                  >
                     View Submission
                   </button>
-                  <button style={styles.adjustButton} onClick={() => handleAdjustGrade(submission.id)} disabled={updatingGrade}>
-                    {updatingGrade ? "Updating..." : "Adjust Grade"}
+                  <button
+                    style={styles.adjustButton}
+                    onClick={() => handleAdjustGrade(grade.id)}
+                    disabled={updatingGradeId === grade.id}
+                  >
+                    {updatingGradeId === grade.id ? "Updating..." : "Adjust Grade"}
                   </button>
                 </td>
               </tr>
@@ -100,20 +125,59 @@ const Review = () => {
           </tbody>
         </table>
       ) : (
-        !loading && <p>No pending submissions.</p>
+        !loading && <p>No pending review requests.</p>
       )}
+      <h2>Plagiarism Reports</h2>
+        {plagiarismReports.length > 0 ? (
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th>Exam</th>
+                <th>Source Student</th>
+                <th>Compared To</th>
+                <th>Similarity</th>
+                <th>Flagged?</th>
+                <th>Checked On</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plagiarismReports.map((report) => (
+                <tr key={report.id}>
+                  <td>{report.exam_title}</td>
+                  <td>{report.source_student}</td>
+                  <td>{report.compared_student}</td>
+                  <td>{report.similarity_score.toFixed(2)}%</td>
+                  <td style={{ color: report.is_flagged ? 'red' : 'green' }}>
+                    {report.is_flagged ? 'Yes' : 'No'}
+                  </td>
+                  <td>{new Date(report.checked_on).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No plagiarism reports available.</p>
+        )}
     </div>
   );
 };
 
-// Styles
 const styles = {
-  notification: {
-    padding: "10px",
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "20px",
+  },
+  error: {
+    color: "red",
+  },
+  viewButton: {
+    padding: "8px",
+    marginRight: "5px",
+    backgroundColor: "#3498db",
     color: "white",
-    textAlign: "center",
-    marginBottom: "10px",
-    borderRadius: "5px",
+    border: "none",
+    cursor: "pointer",
   },
   adjustButton: {
     padding: "8px",
@@ -121,6 +185,13 @@ const styles = {
     color: "white",
     border: "none",
     cursor: "pointer",
+  },
+  notification: {
+    padding: "10px",
+    color: "white",
+    textAlign: "center",
+    marginBottom: "10px",
+    borderRadius: "5px",
   },
 };
 

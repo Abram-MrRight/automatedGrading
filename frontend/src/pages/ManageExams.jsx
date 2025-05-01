@@ -1,25 +1,50 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import FileUploadComponent from "../components/FileUploadComponent";
+import Axios from "../utils/Axios";
+import ExamModal from "../components/ExamModal";
+import { ToastContainer, toast } from "react-toastify";
 
 const ManageExams = () => {
-  const [examTitle, setExamTitle] = useState("");
-  const [examFile, setExamFile] = useState(null);
-  const [markingGuideFile, setMarkingGuideFile] = useState(null);
+  const [courses, setCourses] = useState([]);
   const [uploadedExams, setUploadedExams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingExam, setEditingExam] = useState(null);
+  const [plagiarismRunning, setPlagiarismRunning] = useState(null);
 
   useEffect(() => {
+    fetchCourses();
     fetchExams();
   }, []);
 
+  const fetchCourses = async () => {
+    try {
+      const response = await Axios.get("courses/");
+      setCourses(response.data);
+    } catch (err) {
+      console.error("Failed to fetch courses", err);
+    }
+  };
+
   const fetchExams = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/exams");
-      setUploadedExams(response.data);
+      const response = await Axios.get("exams/");
+      const exams = response.data;
+
+      const markingGuides = await Axios.get("marking_guides/");
+      const guideMap = markingGuides.data.reduce((acc, guide) => {
+        acc[guide.exam] = guide;
+        return acc;
+      }, {});
+
+      const examsWithGuides = exams.map((exam) => ({
+        ...exam,
+        marking_guide: guideMap[exam.id] || null,
+      }));
+
+      setUploadedExams(examsWithGuides);
     } catch (err) {
       setError("Failed to fetch exams.");
       console.error(err);
@@ -28,82 +53,113 @@ const ManageExams = () => {
     }
   };
 
-  const handleUpload = async () => {
-    if (!examTitle || !examFile) {
-      setUploadError("Please provide an exam title and select an exam file.");
-      return;
-    }
-
-    setUploading(true);
-    setUploadError(null);
-
+  const handleUpload = async (form) => {
+    const isEditing = !!editingExam;
     const formData = new FormData();
-    formData.append("title", examTitle);
-    formData.append("exam_file", examFile);
+
+    Object.entries(form).forEach(([key, value]) => {
+      if (value) formData.append(key, value);
+    });
 
     try {
-      const examResponse = await axios.post("http://localhost:8000/exams", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      setUploading(true);
+      let response;
 
-      let updatedExam = examResponse.data;
+      if (isEditing) {
+        response = await Axios.put(`exams/${editingExam.id}/`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        response = await Axios.post("exams/", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
 
-      // If a marking guide is provided, upload it
-      if (markingGuideFile) {
-        const markingFormData = new FormData();
-        markingFormData.append("exam_id", updatedExam.id);
-        markingFormData.append("marking_guide_file", markingGuideFile);
+      const updatedExam = response.data;
 
-        const markingGuideResponse = await axios.post("http://localhost:8000/marking-guides", markingFormData, {
+      if (form.marking_guide_file) {
+        const guideForm = new FormData();
+        guideForm.append("exam", updatedExam.id);
+        guideForm.append("marking_guide_file", form.marking_guide_file);
+        guideForm.append("grading_type", form.grading_type || "fair");
+
+        const guideRes = await Axios.post("marking_guides/", guideForm, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        updatedExam.marking_guide = markingGuideResponse.data;
+        updatedExam.marking_guide = guideRes.data;
       }
 
-      setUploadedExams([...uploadedExams, updatedExam]);
-      setExamTitle("");
-      setExamFile(null);
-      setMarkingGuideFile(null);
+      if (isEditing) {
+        setUploadedExams((prev) =>
+          prev.map((e) => (e.id === updatedExam.id ? updatedExam : e))
+        );
+      } else {
+        setUploadedExams((prev) => [...prev, updatedExam]);
+      }
+
+      setModalVisible(false);
+      setEditingExam(null);
     } catch (err) {
-      setUploadError("Failed to upload exam. Please try again.");
-      console.error(err);
+      console.error("Upload/Update Error", err);
+      setUploadError("Something went wrong.");
     } finally {
       setUploading(false);
     }
   };
 
+  const handleDelete = async (exam) => {
+    const confirm = window.confirm(
+      `Are you sure you want to delete the exam "${exam.title}" and its marking guide?`
+    );
+    if (!confirm) return;
+
+    try {
+      if (exam.marking_guide?.id) {
+        await Axios.delete(`marking_guides/${exam.marking_guide.id}/`);
+      }
+
+      await Axios.delete(`exams/${exam.id}/`);
+      setUploadedExams((prev) => prev.filter((e) => e.id !== exam.id));
+    } catch (err) {
+      console.error("Delete failed", err);
+      alert("Failed to delete exam or marking guide.");
+    }
+  };
+
+  const handleRunPlagiarism = async (examId) => {
+    if (!window.confirm("Run plagiarism check for this exam?")) return;
+  
+    setPlagiarismRunning(examId);
+  
+    try {
+      await Axios.post(`exams/${examId}/plagiarism-check/`);
+      toast.success("Plagiarism check complete ✅");
+    } catch (error) {
+      toast.error("Failed to run plagiarism check ❌");
+      console.error(error);
+    } finally {
+      setPlagiarismRunning(null);
+    }
+  };
+  
+
   return (
     <div>
       <h2>Manage Exams</h2>
 
-      {/* Upload Section */}
-      <h3>Upload a New Exam</h3>
-      <input
-        type="text"
-        placeholder="Exam Title"
-        value={examTitle}
-        onChange={(e) => setExamTitle(e.target.value)}
-        style={styles.input}
-      />
-      <FileUploadComponent
-        label="Select an EXAM file:"
-        onChange={(e) => setExamFile(e.target.files[0])}
-        accept=".pdf,.docx,.txt"
-        styles={styles.input}
-      />
-      <FileUploadComponent
-        label="Select a MARKING GUIDE file:"
-        onChange={(e) => setMarkingGuideFile(e.target.files[0])}
-        accept=".pdf,.docx,.txt"
-        styles={styles.input}
-      />
-      <button onClick={handleUpload} style={styles.uploadButton} disabled={uploading}>
-        {uploading ? "Uploading..." : "Upload Exam & Marking Guide"}
+      <button
+        onClick={() => {
+          setEditingExam(null);
+          setModalVisible(true);
+        }}
+        style={styles.uploadButton}
+      >
+        + Upload New Exam
       </button>
+
       {uploadError && <p style={styles.error}>{uploadError}</p>}
 
-      {/* Uploaded Exams */}
       <h3>Uploaded Exams</h3>
       {loading ? (
         <p>Loading...</p>
@@ -113,53 +169,107 @@ const ManageExams = () => {
         <table style={styles.table}>
           <thead>
             <tr>
-              <th>Exam Title</th>
+              <th>Title</th>
+              <th>Description</th>
               <th>Exam File</th>
               <th>Marking Guide</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {uploadedExams.map((exam, index) => (
-              <tr key={index}>
+            {uploadedExams.map((exam) => (
+              <tr key={exam.id}>
                 <td>{exam.title}</td>
+                <td>{exam.description}</td>
                 <td>
-                  <a href={exam.fileUrl} download>
-                    {exam.fileName || "Download"}
-                  </a>
+                  {exam.exam_file ? (
+                    <a href={`http://localhost:8000${exam.exam_file}`} download>
+                      {exam.exam_file.split("/").pop()}
+                    </a>
+                  ) : (
+                    "N/A"
+                  )}
                 </td>
                 <td>
-                  {exam.marking_guide ? (
-                    <a href={exam.marking_guide.fileUrl} download>
-                      {exam.marking_guide.fileName || "Download"}
+                  {exam.marking_guide?.marking_guide_file ? (
+                    <a
+                      href={`http://localhost:8000${exam.marking_guide.marking_guide_file}`}
+                      download
+                    >
+                      {exam.marking_guide.marking_guide_file.split("/").pop()}
                     </a>
                   ) : (
                     <span style={styles.unavailable}>Unavailable</span>
                   )}
+                </td>
+                <td>
+                  <button
+                    style={styles.editButton}
+                    onClick={() => {
+                      setEditingExam(exam);
+                      setModalVisible(true);
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    style={styles.deleteButton}
+                    onClick={() => handleDelete(exam)}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    style={styles.plagiarismButton}
+                    onClick={() => handleRunPlagiarism(exam.id)}
+                    disabled={plagiarismRunning === exam.id}
+                  >
+                    {plagiarismRunning === exam.id ? "Checking..." : "Run Plagiarism Check"}
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       ) : (
-        <p>No exams available.</p>
+        <p>No exams uploaded yet.</p>
       )}
+
+      <ExamModal
+        isOpen={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleUpload}
+        courses={courses}
+        initialData={editingExam}
+        loading={uploading}
+      />
     </div>
   );
 };
 
-// Styles
 const styles = {
-  input: {
-    // display: "block",
-    marginBottom: "10px",
-    padding: "8px",
-    width: "300px",
-  },
   uploadButton: {
     padding: "10px",
     backgroundColor: "#27ae60",
     color: "white",
     border: "none",
+    cursor: "pointer",
+    marginBottom: "15px",
+  },
+  editButton: {
+    marginRight: "8px",
+    padding: "6px 10px",
+    backgroundColor: "#2980b9",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  deleteButton: {
+    padding: "6px 10px",
+    backgroundColor: "#e74c3c",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
     cursor: "pointer",
   },
   error: {
@@ -174,6 +284,19 @@ const styles = {
     color: "red",
     fontStyle: "italic",
   },
+  plagiarismButton: {
+    padding: "6px 10px",
+    backgroundColor: "#9b59b6",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    marginLeft: "8px",
+    transition: "background-color 0.3s",
+  },
+  plagiarismButtonHover: {
+    backgroundColor: "#8e44ad"
+  } 
 };
 
 export default ManageExams;

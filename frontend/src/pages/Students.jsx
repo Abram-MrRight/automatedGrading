@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Student from "./Student";
-import Papa from "papaparse"; // CSV parser
+import { useNavigate } from "react-router-dom";
+import Papa from "papaparse";
+import Axios from "../utils/Axios";
 
 const Students = () => {
   const [students, setStudents] = useState([]);
@@ -12,13 +12,15 @@ const Students = () => {
   const [csvFile, setCsvFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     fetchStudents();
   }, []);
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/students/");
+      const response = await Axios.get("students/");
       setStudents(response.data);
     } catch (error) {
       toast.error("Failed to fetch students ❌");
@@ -54,7 +56,7 @@ const Students = () => {
             return;
           }
 
-          const response = await axios.post("http://localhost:8000/students/bulk-upload/", data, {
+          const response = await Axios.post("students/bulk-upload/", data, {
             headers: { "Content-Type": "application/json" },
           });
 
@@ -71,12 +73,12 @@ const Students = () => {
     });
   };
 
-  const filteredStudents = students.filter(
-    (student) =>
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.regNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredStudents = students.filter((student) =>
+    (student.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (student.regNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (student.email || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
 
   return (
     <div style={styles.container}>
@@ -110,7 +112,21 @@ const Students = () => {
         <div style={styles.list}>
           {filteredStudents.length > 0 ? (
             filteredStudents.map((student) => (
-              <Student key={student.id} student={student} />
+              <div key={student.id} style={styles.card}>
+                <img
+                  src={student.profile_pic || "/default-avatar.png"}
+                  alt={student.name}
+                  style={styles.image}
+                />
+                <h3>{student.name}</h3>
+                <p>@{student.username}</p>
+                <button
+                  style={styles.viewButton}
+                  onClick={() => navigate(`/student/${student.id}`)}
+                >
+                  View
+                </button>
+              </div>
             ))
           ) : (
             <p>No students found.</p>
@@ -128,7 +144,35 @@ const styles = {
   uploadSection: { display: "flex", justifyContent: "space-between", gap: "10px", marginBottom: "15px" },
   fileInput: { padding: "8px", border: "1px solid #ddd" },
   uploadButton: { backgroundColor: "#3498db", color: "white", padding: "10px", border: "none", cursor: "pointer" },
-  list: { display: "grid", gap: "10px" },
+  list: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "20px",
+  },  
+  card: {
+    backgroundColor: "#fff",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    padding: "16px",
+    textAlign: "center",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+  },
+  image: {
+    width: "100px",
+    height: "100px",
+    borderRadius: "50%",
+    objectFit: "cover",
+    marginBottom: "10px",
+  },
+  viewButton: {
+    backgroundColor: "#3498db",
+    color: "white",
+    padding: "8px 12px",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    marginTop: "10px"
+  },  
 };
 
 export default Students;

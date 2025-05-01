@@ -1,0 +1,10 @@
+1. The output is 3.
+2. A list is used to store key-value pairs.
+3. The break statement is used to skip to the next iteration.
+4. x == 10
+5. = is used for comparison, while == is used for assignment.
+6. my_list[3]
+7. The output is True.
+8. for i in range(1, 5): print(i)
+9. The try-except block is used to handle syntax errors.
+10. The output is [1, 2, 3].

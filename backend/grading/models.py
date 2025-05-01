@@ -6,7 +6,6 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.utils.timezone import localtime
 
-
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
@@ -15,45 +14,40 @@ class CustomUser(AbstractUser):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
 
+    # Student-specific fields
+    name = models.CharField(max_length=100, null=True, blank=True)
+    age = models.IntegerField(null=True, blank=True)
+    regNumber = models.CharField(max_length=100, null=True, blank=True, unique=True)
+    profile_pic = models.ImageField(upload_to='media/profile_pics/', null=True, blank=True)
+
     def __str__(self):
         return self.username
 
-# Create your models here.
-class Student(models.Model):
-    name = models.CharField(max_length=100)
-    age = models.IntegerField()
-    email = models.EmailField()
-    regNumber = models.CharField(max_length=100)
-    username = models.CharField(max_length=100)
-    password = models.CharField(max_length=100)
-    profile_pic = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
-
-    def __str__(self):
-        return self.name
-    
+# Create your models here.    
 class Course(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
-    students = models.ManyToManyField('Student', related_name='courses', blank=True)
-     
+    created_by = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='courses')
+    students = models.ManyToManyField('CustomUser', limit_choices_to={'role': 'student'}, related_name='enrolled_courses', blank=True)
+
     def __str__(self):
         return self.title
 
 class Exam(models.Model):
     title = models.CharField(max_length=200)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='exams')
-    description = models.TextField()  # Added description for more exam details
+    description = models.TextField()
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    exam_file = models.FileField(upload_to='exams/', null=True, blank=True)  # For uploading exam documents (PDF, Word)
+    exam_file = models.FileField(upload_to='media/exams/', null=True, blank=True)
     
     def __str__(self):
         return self.title
 
 class ExamSubmission(models.Model):
     exam = models.ForeignKey("Exam", on_delete=models.CASCADE, related_name="submissions")
-    student = models.ForeignKey("Student", on_delete=models.CASCADE, related_name="submissions", null=True, blank=True)
-    file = models.FileField(upload_to="submissions/", blank=True, null=True)
+    student = models.ForeignKey("CustomUser", on_delete=models.CASCADE, related_name="submissions", null=True, blank=True)
+    file = models.FileField(upload_to="media/submissions/", blank=True, null=True)
     submission_time = models.DateTimeField(auto_now_add=True)
     preprocessed_text = models.TextField(null=True, blank=True)
     vector_embeddings = models.BinaryField(null=True, blank=True)
@@ -68,12 +62,6 @@ class ExamSubmission(models.Model):
             raw_text = extract_text_from_file(self.file.path)
             cleaned_text = preprocess_text(raw_text)
             self.preprocessed_text = cleaned_text
-            
-            # Save Markdown-formatted output to a file
-            # with open("submission_output.md", "w", encoding="utf-8") as f:
-            #     f.write(f"### Preprocessed Submission\n\n```\n{self.preprocessed_text}\n```")
-
-            # print("✅ Preprocessed text saved to **submission_output.md**")
         except Exception as e:
             print(f"Error processing submission: {e}")
 
@@ -97,8 +85,15 @@ class ExamSubmission(models.Model):
         self.process_submission()  # Process text after saving
 
 class MarkingGuide(models.Model):
+    GRADING_OPTIONS = [
+        ('fair', 'Fair Grading'),
+        ('lenient', 'Lenient Grading'),
+        ('strict', 'Strict Grading'),
+    ]
+
     exam = models.OneToOneField('Exam', on_delete=models.CASCADE, related_name='marking_guide')
-    marking_guide_file = models.FileField(upload_to='marking_guides/', null=True, blank=True)
+    marking_guide_file = models.FileField(upload_to='media/marking_guides/', null=True, blank=True)
+    grading_type = models.CharField(max_length=10, choices=GRADING_OPTIONS, default='fair')
     preprocessed_text = models.TextField(null=True, blank=True)
     vector_embeddings = models.BinaryField(null=True, blank=True)
 
@@ -107,17 +102,12 @@ class MarkingGuide(models.Model):
     
     def process_marking_guide(self):
         """Extracts and preprocesses text, then stores it."""
+        
         if self.marking_guide_file and self.marking_guide_file.name:
             try:
                 raw_text = extract_text_from_file(self.marking_guide_file.path)
                 cleaned_text = preprocess_text(raw_text)
                 self.preprocessed_text = cleaned_text
-
-                # # Save Markdown-formatted output to a file
-                # with open("marknigGuide_output.md", "w", encoding="utf-8") as f:
-                #   f.write(f"### Preprocessed Submission\n\n```\n{self.preprocessed_text}\n```")
-
-                # print("✅ Preprocessed text saved to **marknigGuide_output.md**")
 
             except Exception as e:
                 print(f"Error processing marking guide: {e}")
@@ -140,7 +130,7 @@ class MarkingGuide(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.process_marking_guide()     
+        self.process_marking_guide()
 
 class Grading(models.Model):
     GRADING_OPTIONS = [
@@ -148,22 +138,24 @@ class Grading(models.Model):
         ('lenient', 'Lenient Grading'),
         ('strict', 'Strict Grading'),
     ]
-    exam_submission = models.ForeignKey('ExamSubmission', on_delete=models.CASCADE, related_name='grading')
+    exam = models.ForeignKey('Exam', on_delete=models.CASCADE, null=True, blank=True, related_name='grading')
     marking_guide = models.ForeignKey('MarkingGuide', on_delete=models.CASCADE, null=True, blank=True, related_name='grading')
-    student = models.ForeignKey("Student", on_delete=models.CASCADE, related_name="gradings", null=True, blank=True)
+    student = models.CharField(max_length=10, null=True, blank=True)
+    uploaded_file = models.FileField(upload_to='grading_uploads/', null=True, blank=True)
 
-    
     grade = models.CharField(max_length=10, null=True, blank=True)
-    grade_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # AI similarity score
-    graded_on = models.DateTimeField(auto_now_add=True)  # Timestamp
-    grading_type  = models.CharField(max_length=10, choices=GRADING_OPTIONS, default='fair')  # AI graded?
-    comments = models.TextField(null=True, blank=True)  # AI-generated feedback
-  
+    grade_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Current grade
+    initial_grade_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Preserve AI score
 
+    graded_on = models.DateTimeField(auto_now_add=True)
+    grading_type  = models.CharField(max_length=10, choices=GRADING_OPTIONS, default='fair')
+    comments = models.TextField(null=True, blank=True)
+    review_requested = models.BooleanField(default=False)
+    reviewed_by_educator = models.BooleanField(default=False)
 
     def __str__(self):
-      student_name = self.student.name if self.student else "Unknown Student"
-      exam_name = self.exam_submission.exam.title if self.exam_submission and self.exam_submission.exam else "Unknown Exam"
+      student_name = self.student if self.student else "Unknown Student"
+      exam_name = self.exam if self.exam and self.exam else "Unknown Exam"
       graded_time = localtime(self.graded_on).strftime("%Y-%m-%d %H:%M")
       return f"{student_name} | {self.grade or 'No Grade'} | {exam_name} | {graded_time}"
     
@@ -173,46 +165,53 @@ class Grading(models.Model):
             try:
                 grading_service = GradingService()
 
+                if self.uploaded_file:
+                    student_answer = extract_text_from_file(self.uploaded_file.path)
+                else:
+                    raise ValueError("No file available for grading.")
                 # Extract & preprocess student answer
-                student_answer = extract_text_from_file(self.exam_submission.file.path)
                 cleaned_student_answer = preprocess_text(student_answer)
 
-                # Extract & preprocess marking guide
+                # Extract marking guide
                 marking_guide_text = ""
+                grading_type = self.grading_type
+
                 if self.marking_guide and self.marking_guide.marking_guide_file:
                     raw_marking_guide = extract_text_from_file(self.marking_guide.marking_guide_file.path)
                     marking_guide_text = preprocess_text(raw_marking_guide)
+                    grading_type = self.marking_guide.grading_type
 
-                # AI grading
+                # AI Grading
                 if self.grading_type == 'fair':
                     grade, similarity_score, feedback = grading_service.fair_grading(cleaned_student_answer, marking_guide_text)
                 elif self.grading_type == 'lenient':
                     grade, similarity_score, feedback = grading_service.lenient_grading(cleaned_student_answer, marking_guide_text)
                 elif self.grading_type == 'strict':
-                  grade, similarity_score, feedback = grading_service.strict_grading(cleaned_student_answer, marking_guide_text)
+                    grade, similarity_score, feedback = grading_service.strict_grading(cleaned_student_answer, marking_guide_text)
+                else:
+                    grade, similarity_score, feedback = "N/A", 0.0, "Unknown grading type"
 
-                # Store grading details
+                # Save both final and initial scores
                 self.grade = grade
                 self.grade_score = similarity_score
+                if self.initial_grade_score is None:
+                    self.initial_grade_score = similarity_score  # Preserve initial AI score
                 self.comments = feedback
+                self.grading_type = grading_type
                 self.save()
 
             except Exception as e:
                 print(f"Error processing grading: {e}")
 
     def save(self, *args, **kwargs):
-        """Auto-grade or check plagiarism when saving, avoiding recursion."""
-        is_new_instance = self._state.adding  # Check if this is a new instance
-
-        super().save(*args, **kwargs)  # First, save the object
-
-        # Process grading & plagiarism only for new instances or when necessary
-        if is_new_instance or (self.grading_type and not self.grade):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new or (self.grading_type and not self.grade):
             try:
                 self.process_grading()
-                super().save(update_fields=['grade', 'grade_score', 'comments'])
+                super().save(update_fields=['grade', 'grade_score', 'initial_grade_score', 'comments'])
             except Exception as e:
-                print(f"Error processing grading in save: {e}")
+                print(f"Error during grading save: {e}")
 
 class PlagiarismCheckReport(models.Model):
     source_submission = models.ForeignKey(

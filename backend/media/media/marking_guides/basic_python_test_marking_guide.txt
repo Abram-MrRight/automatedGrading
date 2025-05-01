@@ -1,0 +1,10 @@
+1. The output of the expression 5 % 2 is 1.
+2. A dictionary is used to store key-value pairs.
+3. The break statement is used to exit a loop prematurely.
+4. x = 10
+5. = is used for assignment, while == is used for comparison.
+6. my_list[2]
+7. The output of the expression True and False is False.
+8. for i in range(1, 6): print(i)
+9. The try-except block is used to handle exceptions and prevent program crashes.
+10. The output of the expression [1, 2, 3] + [4, 5, 6] is [1, 2, 3, 4, 5, 6].

@@ -1,6 +1,9 @@
 import torch
 from sentence_transformers import SentenceTransformer, util
 from .text_processing import extract_text_from_file, preprocess_text
+import nltk
+
+nltk.download('punkt')
 
 class PlagiarismChecker:
     def __init__(self, threshold=0.6):

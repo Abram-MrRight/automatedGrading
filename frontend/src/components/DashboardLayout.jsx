@@ -15,24 +15,26 @@ const DashboardLayout = () => {
             <li style={styles.navItem}><Link to="/dashboard" style={styles.navLink}>Dashboard</Link></li>
             {role === "student" && (
               <>
+                <li style={styles.navItem}><Link to="/courses" style={styles.navLink}>My Courses</Link></li>
                 <li style={styles.navItem}><Link to="/submission" style={styles.navLink}>Assignments</Link></li>
                 <li style={styles.navItem}><Link to="/grades" style={styles.navLink}>View Grades</Link></li>
-                <li style={styles.navItem}><Link to="/feedback" style={styles.navLink}>Feedback</Link></li>
+                <li style={styles.navItem}><Link to="/profile" style={styles.navLink}>My Profile</Link></li>
               </>
             )}
 
             {role === "educator" && (
               <>
+                <li style={styles.navItem}><Link to="/courses" style={styles.navLink}>Manage Courses</Link></li>
+                <li style={styles.navItem}><Link to="/students" style={styles.navLink}>Manage Students</Link></li>
                 <li style={styles.navItem}><Link to="/manage-exams" style={styles.navLink}>Manage Exams</Link></li>
                 <li style={styles.navItem}><Link to="/review" style={styles.navLink}>Review Submissions</Link></li>
-                <li style={styles.navItem}><Link to="/rubrics" style={styles.navLink}>Manage Rubrics</Link></li>
-                <li style={styles.navItem}><Link to="/reports" style={styles.navLink}>Student Reports</Link></li>
-                <li style={styles.navItem}><Link to="/students" style={styles.navLink}>Manage Students</Link></li>
               </>
             )}
+            <li>
+              <button onClick={logout} style={styles.logoutButton}>Logout</button>
+            </li>
           </ul>
         </nav>
-        <button onClick={logout} style={styles.logoutButton}>Logout</button>
       </aside>
 
       {/* Main Content Section (Changes Based on Route) */}

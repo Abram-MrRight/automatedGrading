@@ -1,67 +1,54 @@
 import { useState, useEffect } from "react";
-// import { jwtDecode } from "jwt-decode";
 import { AuthContext } from "./AuthContext";
+import Axios from "../utils/Axios";
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
-
-  const [role, setRole] = useState(() => {
-    const storedRole = localStorage.getItem("role");
-    return storedRole ? storedRole : null;
-  });
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("user")) || null);
+  const [role, setRole] = useState(() => localStorage.getItem("role") || null);
+  const [accessToken, setAccessToken] = useState(() => localStorage.getItem("accessToken") || null);
 
   useEffect(() => {
-    if (user && role) {
+    if (accessToken) {
+      Axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+    } else {
+      delete Axios.defaults.headers.common["Authorization"];
+    }
+  }, [accessToken]);
+
+  const login = async (username, password) => {
+    try {
+      const response = await Axios.post("/login/", { username, password });
+
+      const { access, refresh, role, user } = response.data;
+
+      // Save in state
+      setRole(role);
+      setAccessToken(access);
+      setUser(user);
+      
+      // Save in local storage
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("role", role);
-    }
-  }, [user, role]);
+      localStorage.setItem("accessToken", access);
+      localStorage.setItem("refreshToken", refresh); 
 
-  const login = (email, password) => {
-    // try {
-    //   const response = await fetch("http://localhost:8000/auth/login", {
-    //     method: "POST",
-    //     headers: { "Content-Type": "application/json" },
-    //     body: JSON.stringify({ email, password }),
-    //   });
-    //   const data = await response.json();
-    //   if (data.token) {
-    //     localStorage.setItem("token", data.token);
-    //     const decoded = jwtDecode(data.token);
-    //     setUser(decoded.email);
-    //     setRole(decoded.role);
-    //     return true;
-    //   }
-    //   return false;
-    // } catch (error) {
-    //   console.error("Login failed:", error);
-    //   return false;
-    // }
-
-    const mockUsers = [
-      { email: "student@example.com", password: "password", role: "student" },
-      { email: "educator@example.com", password: "password", role: "educator" },
-      { email: "admin@example.com", password: "password", role: "admin" },
-    ];
-    const foundUser = mockUsers.find((u) => u.email === email && u.password === password);
-    if (foundUser) {
-      const token = JSON.stringify({ email: foundUser.email, role: foundUser.role });
-      localStorage.setItem("token", token);
-      setUser(foundUser.email);
-      setRole(foundUser.role);
+      Axios.defaults.headers.common["Authorization"] = `Bearer ${access}`;
       return true;
+    } catch (err) {
+      console.error("Login failed:", err.response?.data || err.message);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
     setUser(null);
     setRole(null);
+    setAccessToken(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    delete Axios.defaults.headers.common["Authorization"];
   };
 
   return (

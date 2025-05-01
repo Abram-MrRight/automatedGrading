@@ -1,0 +1,10 @@
+1. What is the output of the expression 5 % 2?
+2. Which data structure is used to store key-value pairs?
+3. What is the purpose of the break statement in a loop?
+4. Write a single line of code to declare a variable x with the value 10.
+5. What is the difference between = and == operators?
+6. How do you access the third element of a list my_list?
+7. What is the output of the expression True and False?
+8. Write a loop that prints numbers from 1 to 5.
+9. What is the purpose of the try-except block?
+10. What is the output of the expression [1, 2, 3] + [4, 5, 6]?

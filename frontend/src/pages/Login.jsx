@@ -1,11 +1,11 @@
 import { useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import Axios from "../utils/Axios"
+import { useNavigate, Link } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import Axios from "../utils/Axios";
 
 const Login = () => {
-  // const [courses, setCourses] = useState([]);
-  // const { login } = useContext(AuthContext);
-  const [username, setUsername] = useState('');
+  const { login } = useContext(AuthContext);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -14,32 +14,21 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
   
-    try {
-      const response = await Axios.post(`login/`, { username, password });
-      const { access, refresh, role } = response.data;
-      localStorage.setItem('accessToken', access);
-      localStorage.setItem('refreshToken', refresh);
-      localStorage.setItem('role', role);
-
-      
-      if (role === 'admin') {
-        navigate('/admin-dashboard');
-      } else if (role === 'educator') {
-        navigate('/educator-dashboard');
-      } else {
-        navigate('/student-dashboard');
-      }
-    }catch (err) {
-      console.error("Login error:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Invalid username or password");
-    } finally {
-      setLoading(false);
+    const success = await login(username, password);
+  
+    if (success) {
+      navigate("/dashboard");
+    } else {
+      setError("Invalid username or password");
     }
+  
+    setLoading(false);
   };
 
   const handleForgotPassword = async () => {
@@ -50,8 +39,8 @@ const Login = () => {
     }
 
     try {
-      await axios.post("http://localhost:8000/auth/reset-password", { email: resetEmail });
-      setResetStatus({ message: "Password reset request sent successfully", type: "success" });
+      await Axios.post("/auth/reset-password/", { email: resetEmail });
+      setResetStatus({ message: "Password reset request sent", type: "success" });
     } catch (err) {
       setResetStatus({ message: "Failed to send reset request", type: "error" });
       console.error(err);
@@ -66,8 +55,8 @@ const Login = () => {
 
       <form onSubmit={handleLogin} style={styles.form}>
         <input
-          type="username"
-          placeholder="username"
+          type="text"
+          placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           style={styles.input}
@@ -95,6 +84,7 @@ const Login = () => {
         Don't have an account? <Link to="/register" style={styles.registerLink}>Register Now!</Link>
       </p>
 
+      {/* Forgot Password Modal */}
       {showForgotPassword && (
         <div style={styles.dialogOverlay}>
           <div style={styles.dialogBox}>

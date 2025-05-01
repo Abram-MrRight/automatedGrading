@@ -17,6 +17,7 @@ import easyocr
 # Ensure NLTK resources are available
 nltk.download("punkt")
 nltk.download("stopwords")
+nltk.download('punkt_tab')
 
 # Load spaCy English model for lemmatization and Named Entity Recognition (NER)
 nlp = spacy.load("en_core_web_sm")

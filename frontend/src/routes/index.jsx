@@ -1,23 +1,20 @@
 // import { useContext } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
+import Submission from "../pages/Submission";
 import Grades from "../pages/Grades";
-import Feedback from "../pages/Feedback";
 import Review from "../pages/Review";
-import Rubrics from "../pages/Rubrics";
-import Reports from "../pages/Reports";
+import PrivateRoute from "../components/PrivateRoute";
 import NotFound from "../pages/NotFound";
+import DashboardLayout from "../components/DashboardLayout";
 import ManageExams from "../pages/ManageExams";
-import Students from "../components/educator/StudentList"
+import Students from "../pages/Students";
 import Student from "../pages/Student";
-import EducatorDashboard from "../pages/EducatorDashboard";
-import StudentDashboard from "../pages/StudentDashboard";
-import AnalysticsDashboard from "../components/educator/AnalysticsDashboard";
-import CourseDashboard from "../components/educator/courseDashboard";
-import GradingScreen from "../components/educator/GradingScreen";
-import Submission from "../components/educator/SUbmissionScreen"
-import Exam from "../components/educator/ExamScreen"
+import Courses from "../pages/Courses";
+import Registration from "../pages/Registration";
+import Profile from "../pages/Profile";
 
 const AppRoutes = () => {
 
@@ -25,27 +22,18 @@ const AppRoutes = () => {
     <Router>
       <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/register" element={<Registration />} />
+          <Route element={<PrivateRoute allowedRoles={['student', 'educator']}><DashboardLayout /></PrivateRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/manage-exams" element={<ManageExams />} />
-            <Route path="/grades" element={<Grades />} />
-            <Route path="/feedback" element={<Feedback />} />
-            <Route path="/review" element={<Review />} />
-            <Route path="/rubrics" element={<Rubrics />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/students" element={<Student />} />
-
-            {/* educator */}
-            <Route path="/educator-dashboard" element={<EducatorDashboard />} />
-            <Route path="/student-dashboard" element={<StudentDashboard />} />
-            <Route path= "/course" element={<CourseDashboard />} />
-            <Route path="/grading" element={<GradingScreen />} />
             <Route path="/submission" element={<Submission />} />
-            <Route path="/analytics" element={<AnalysticsDashboard />} />
-            <Route path= "/student" element={<Students />} />
-            <Route path ="/exam" element={<Exam />} />
-
-            {/* student */}
-
+            <Route path="/grades" element={<Grades />} />
+            <Route path="/review" element={<Review />} />
+            <Route path="/students" element={<Students />} />
+            <Route path="/student/:id" element={<Student />} />
+            <Route path="/courses" element={<Courses />} />
+            <Route path="/profile" element={<Profile />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
     </Router>
