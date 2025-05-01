@@ -1,0 +1,39 @@
+
+.....backend.......
+python -m pip install virtualenv
+python -m virtualenv vMachine
+vMachine\scripts\activate 
+python -m pip install django
+django-admin startproject automatedGrading
+python manage.py startapp grading
+python manage.py migrate
+
+
+......frontend...
+npm create vite@latest frontend --template react-swcy
+npm install
+npm run dev
+
+...admin..
+python manage.py createsuperuser
+Username: admin
+Email address: admin@gmail.com
+Password: admin
+....educator...
+abraham@gmail.com
+educator
+
+python manage.py makemigrations
+python manage.py migrate
+
+ frontend
+ ....educator....
+ username:educator
+ password:Abraham44
+
+ ..student...
+ username:student
+ password:Abraham44
+
+
+ 
