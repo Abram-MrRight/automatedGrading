@@ -22,13 +22,13 @@ jobs:
       - name: Install Heroku CLI
         run: curl https://cli-assets.heroku.com/install.sh | sh
 
-      - name: Deploy to Heroku
-        run: |
-          echo "Logging in to Heroku..."
-          echo "$HEROKU_API_KEY" | heroku auth:token
-          heroku git:remote --app automatedgrading-backend
-          git subtree push --prefix backend heroku main
+      - name: Add Heroku git remote
+        run: heroku git:remote --app automatedgrading-backend
         env:
-          HEROKU_API_KEY: "HRKU-46d9f635-d5a3-4d6b-a5f7-d9ad45dd3572"
-          HEROKU_USERNAME: "atongkurabraham@gmail.com"
-          HEROKU_PASSWORD: "atongkurabraham@gmail.com"
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      - name: Push backend folder to Heroku
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          git subtree push --prefix backend https://heroku:${{ secrets.HEROKU_API_KEY }}@git.heroku.com/automatedgrading-backend.git main
