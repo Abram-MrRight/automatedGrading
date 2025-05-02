@@ -1,6 +1,5 @@
 import re
 import pickle
-import docling  # Import docling
 import nltk
 from nltk.corpus import stopwords
 from docx import Document as DocxDocument
