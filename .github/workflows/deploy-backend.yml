@@ -29,6 +29,6 @@ jobs:
 
       - name: Push backend folder to Heroku
         run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
+          git config --global user.email "atongkurabraham@gmail.com"
+          git config --global user.name "Atong Abraham Kur"
           git subtree push --prefix backend https://heroku:${{ secrets.HEROKU_API_KEY }}@git.heroku.com/automatedgrading-backend.git main
