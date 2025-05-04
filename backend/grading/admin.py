@@ -22,7 +22,7 @@ admin.site.register(Grading)
 admin.site.register(PlagiarismCheckReport)
 
 class CustomUserAdminForm(forms.ModelForm):
-    courses = forms.ModelMultipleChoiceField(
+    enrolled_courses = forms.ModelMultipleChoiceField(
         queryset=Course.objects.all(),
         required=False,
         widget=admin.widgets.FilteredSelectMultiple("Courses", is_stacked=False)
@@ -36,9 +36,9 @@ class CustomUserAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Only show this for students
         if self.instance and self.instance.role != 'student':
-            self.fields.pop('courses', None)
+            self.fields.pop('enrolled_courses', None)
         else:
-            self.fields['courses'].initial = self.instance.courses.all()
+            self.fields['enrolled_courses'].initial = self.instance.enrolled_courses.all()
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -46,7 +46,7 @@ class CustomUserAdminForm(forms.ModelForm):
             instance.save()
         if instance.role == 'student':
             self.save_m2m()  # needed for enrolled_courses
-            instance.courses.set(self.cleaned_data['courses'])
+            instance.enrolled_courses.set(self.cleaned_data['enrolled_courses'])
         return instance
 
 # Customized CustomUser Admin
@@ -65,6 +65,7 @@ class CustomUserAdmin(UserAdmin):
             'fields': ('email', 'name', 'regNumber', 'age', 'profile_pic')
         }),
         (_('Role'), {'fields': ('role',)}),
+        (_('Course Enrollment'), {'fields': ('enrolled_courses',)}),  # ✅ Editable
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
     )

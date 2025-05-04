@@ -1,10 +1,8 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
-from grading.views import LoginView, UploadSubmissionAPIView,GradingReportListAPIView
-from django.views.generic.base import RedirectView
-
 from grading.views import *
+from django.views.generic import RedirectView 
 
 grading_update = GradingUpdateView.as_view({
     'put': 'update_grade',
@@ -12,8 +10,8 @@ grading_update = GradingUpdateView.as_view({
 })
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='/admin/', permanent=False)), 
     path('admin/', admin.site.urls),
+    path('', RedirectView.as_view(url='/admin/', permanent=True)),
     path('login/', LoginView.as_view(), name='login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('upload-submission/', UploadSubmissionAPIView.as_view(), name='upload-submission'),
@@ -24,11 +22,6 @@ urlpatterns = [
     path("grading-review-requests/", ReviewRequestsListAPIView.as_view(), name="grading-review-requests"),
     path("reports/", grading_report_view, name="grading-report-view"),
     path("educator/", educator_dashboard, name="educator-dashboard"),
-
-    # ✅ INCLUDE YOUR APP ROUTER URLS HERE:
-    path('', include('grading.urls')),  # Add this line
     path("plagiarism-reports/", plagiarism_reports, name="plagiarism-reports"),
     path('exams/<int:exam_id>/plagiarism-check/', run_plagiarism_check, name='run-plagiarism-check'),
 ]
-
-

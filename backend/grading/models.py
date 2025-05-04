@@ -138,10 +138,9 @@ class Grading(models.Model):
         ('lenient', 'Lenient Grading'),
         ('strict', 'Strict Grading'),
     ]
-    exam = models.ForeignKey('Exam', on_delete=models.CASCADE, null=True, blank=True, related_name='grading')
+    exam_submission = models.ForeignKey('ExamSubmission', on_delete=models.CASCADE, related_name='grading')
     marking_guide = models.ForeignKey('MarkingGuide', on_delete=models.CASCADE, null=True, blank=True, related_name='grading')
-    student = models.CharField(max_length=10, null=True, blank=True)
-    uploaded_file = models.FileField(upload_to='grading_uploads/', null=True, blank=True)
+    student = models.ForeignKey("CustomUser", on_delete=models.CASCADE, related_name="gradings", null=True, blank=True)
 
     grade = models.CharField(max_length=10, null=True, blank=True)
     grade_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Current grade
@@ -154,22 +153,19 @@ class Grading(models.Model):
     reviewed_by_educator = models.BooleanField(default=False)
 
     def __str__(self):
-      student_name = self.student if self.student else "Unknown Student"
-      exam_name = self.exam if self.exam and self.exam else "Unknown Exam"
-      graded_time = localtime(self.graded_on).strftime("%Y-%m-%d %H:%M")
-      return f"{student_name} | {self.grade or 'No Grade'} | {exam_name} | {graded_time}"
-    
+        student_name = self.student.name if self.student else "Unknown Student"
+        exam_name = self.exam_submission.exam.title if self.exam_submission and self.exam_submission.exam else "Unknown Exam"
+        graded_time = localtime(self.graded_on).strftime("%Y-%m-%d %H:%M")
+        return f"{student_name} | {self.grade or 'No Grade'} | {exam_name} | {graded_time}"
+
     def process_grading(self):
         """Extract text, preprocess, and use AI grading, then store results."""
         if self.grading_type and not self.grade:
             try:
                 grading_service = GradingService()
 
-                if self.uploaded_file:
-                    student_answer = extract_text_from_file(self.uploaded_file.path)
-                else:
-                    raise ValueError("No file available for grading.")
-                # Extract & preprocess student answer
+                # Extract student answer
+                student_answer = extract_text_from_file(self.exam_submission.file.path)
                 cleaned_student_answer = preprocess_text(student_answer)
 
                 # Extract marking guide

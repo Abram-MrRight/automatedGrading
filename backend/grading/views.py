@@ -42,22 +42,6 @@ from django.db.models import F, ExpressionWrapper, FloatField
 #     return HttpResponse("Welcome to the Grading API")
 
 
-class GradingViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.AllowAny]
-    queryset = Grading.objects.all()
-    serializer_class = GradingSerializer
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            grading_instance = serializer.save()
-            grading_instance.process_grading()  # Manually process grading
-            grading_instance.save(update_fields=['grade', 'grade_score', 'comments'])
-
-            # Return updated serialized data
-            return Response(GradingSerializer(grading_instance).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 class GradingReportListAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -392,7 +376,6 @@ class ExamSubmissionViewSet(viewsets.ModelViewSet):
         ]
     queryset = ExamSubmission.objects.all()
     serializer_class = ExamSubmissionSerializer
-    
 
     def create(self, request, *args, **kwargs):
         file = request.FILES.get('file')
@@ -413,6 +396,12 @@ class ExamSubmissionViewSet(viewsets.ModelViewSet):
             exam=exam,
             file=file
         )
+
+        # Process the submission (which will print the preprocessed text)
+
+        # Convert processed text into vector embeddings
+
+        # Store the vector embeddings in the ExamSubmission instance
 
         # Return the serialized response
         serializer = self.get_serializer(exam_submission)

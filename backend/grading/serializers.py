@@ -2,14 +2,6 @@ from .models import *
 from rest_framework import serializers
 
 
-
-class GradingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Grading
-        fields = '__all__'
-        read_only_fields = ['grade', 'grade_score', 'comments', 'graded_on']
-        
-
 class GradingReportSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     exam_name = serializers.SerializerMethodField()

@@ -1,8 +1,8 @@
 
 .....backend.......
 python -m pip install virtualenv
-python -m virtualenv vMachine
-vMachine\scripts\activate 
+python -m venv venv 
+venv\scripts\activate 
 python -m pip install django
 django-admin startproject automatedGrading
 python manage.py startapp grading

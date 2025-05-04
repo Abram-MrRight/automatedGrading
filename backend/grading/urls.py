@@ -6,8 +6,22 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
 
+urlpatterns = [
+    # ... your other routes
+]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
 
 router = DefaultRouter()
+
+
+# This Home is test page
+# urlpatterns = [
+#     path('', home),
+# ]
 
 
 #creating APIs
@@ -16,8 +30,6 @@ router.register('courses', CourseViewSet, basename='courses')
 router.register('exams', ExamViewSet, basename='exams')
 router.register('submissions', ExamSubmissionViewSet, basename='submissions')
 router.register('marking_guides', MarkingGuideViewSet, basename='marking_guides')
-# router.register(r"enrollments", EnrollmentViewSet, basename="enroll")
-router.register('exam_grading', GradingViewSet, basename='exam_grading')
 
 urlpatterns = router.urls
 
